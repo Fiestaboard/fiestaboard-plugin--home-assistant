@@ -1,6 +1,6 @@
 # Home Assistant Plugin
 
-![Home Assistant Display](./docs/home-assistant-display.png)
+![Home Assistant Display](./docs/board-display.png)
 
 Display entity states from your Home Assistant instance.
 
