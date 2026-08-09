@@ -22,6 +22,31 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger(__name__)
 
 
+def _reason_code_value(reason_code: Any) -> int:
+    """Normalise a paho reason code to a plain ``int``.
+
+    paho-mqtt 1.x hands the connect/disconnect callbacks a plain ``int``.
+    paho-mqtt 2.x (which this listener opts into via
+    ``CallbackAPIVersion.VERSION2``) hands them a ``ReasonCode`` object
+    instead.  ``ReasonCode`` does **not** implement ``__int__``, so calling
+    ``int(reason_code)`` on it raises ``TypeError`` — which, because paho
+    leaves ``suppress_exceptions`` off by default, propagates out of the
+    callback and kills the network thread before the client can subscribe.
+
+    Reading ``.value`` first keeps both paho generations working.
+    """
+    if reason_code is None:
+        return 0
+    value = getattr(reason_code, "value", reason_code)
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        # Unknown representation — treat as success rather than tearing the
+        # connection down; the broker already accepted us at this point.
+        logger.debug("Unrecognised MQTT reason code: %r", reason_code)
+        return 0
+
+
 def _import_paho():
     """Lazy-import paho so tests can patch before first import."""
     import paho.mqtt.client as mqtt_client
@@ -80,14 +105,13 @@ class HAStateStreamListener:
             # Fallback for older paho-mqtt without CallbackAPIVersion
             self._client = paho.Client(client_id=client_id)
 
-        username = self._config.get(
-            "statestream_broker_username",
-            os.environ.get("MQTT_USERNAME") or None,
-        )
-        password = self._config.get(
-            "statestream_broker_password",
-            os.environ.get("MQTT_PASSWORD") or None,
-        )
+        # ``or`` rather than a ``dict.get`` default: the settings form always
+        # submits every declared field, so a blank credential arrives as ""
+        # (key present, value empty).  A ``get(key, default)`` fallback would
+        # see the key, return "", and silently skip the env credentials that
+        # the Home Assistant add-on exports as MQTT_USERNAME/MQTT_PASSWORD.
+        username = self._config.get("statestream_broker_username") or os.environ.get("MQTT_USERNAME") or None
+        password = self._config.get("statestream_broker_password") or os.environ.get("MQTT_PASSWORD") or None
         if username:
             self._client.username_pw_set(username, password or "")
 
@@ -161,7 +185,7 @@ class HAStateStreamListener:
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         """Called when the broker accepts the connection."""
         # reason_code may be an int or a ReasonCode depending on paho version
-        rc = int(reason_code) if reason_code is not None else 0
+        rc = _reason_code_value(reason_code)
         if rc != 0:
             logger.warning("Statestream connect failed (rc=%s)", rc)
             return
@@ -174,7 +198,7 @@ class HAStateStreamListener:
     def _on_disconnect(self, client, userdata, disconnect_flags=None, reason_code=None, properties=None):
         """Called when the broker disconnects."""
         self._connected = False
-        rc = int(reason_code) if reason_code is not None else 0
+        rc = _reason_code_value(reason_code)
         if rc != 0:
             logger.info("Statestream disconnected (rc=%s), will reconnect", rc)
 

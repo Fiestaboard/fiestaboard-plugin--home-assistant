@@ -1,7 +1,7 @@
 {
   "id": "home_assistant",
   "name": "Home Assistant",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Display entity states from Home Assistant via REST API or MQTT Statestream",
   "author": "FiestaBoard Team",
   "repository": "https://github.com/Fiestaboard/fiestaboard-plugin--home-assistant",
@@ -90,6 +90,17 @@
         "description": "Overrides MQTT_BROKER_PORT env var. Leave empty to use the system MQTT broker port.",
         "minimum": 1,
         "maximum": 65535
+      },
+      "statestream_broker_username": {
+        "type": "string",
+        "title": "MQTT Broker Username (optional)",
+        "description": "Overrides MQTT_USERNAME env var. Required when the broker rejects anonymous connections."
+      },
+      "statestream_broker_password": {
+        "type": "string",
+        "title": "MQTT Broker Password (optional)",
+        "description": "Overrides MQTT_PASSWORD env var. Required when the broker rejects anonymous connections.",
+        "ui:widget": "password"
       }
     },
     "required": []

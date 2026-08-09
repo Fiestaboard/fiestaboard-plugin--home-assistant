@@ -46,6 +46,7 @@ Set `base_url` and `access_token` in the plugin configuration.
    ```
 2. Set `mqtt_statestream: true` in the plugin configuration.
 3. If FiestaBoard's system MQTT broker (`MQTT_BROKER_HOST`) already points at the same broker HA uses, no additional broker settings are needed. Otherwise, set `statestream_broker_host` / `statestream_broker_port`.
+4. If the broker rejects anonymous connections, set `statestream_broker_username` / `statestream_broker_password`. When left blank these fall back to the `MQTT_USERNAME` / `MQTT_PASSWORD` env vars, which the Home Assistant add-on populates automatically from the Supervisor's bound MQTT service.
 
 ## Template Variables
 
@@ -145,6 +146,8 @@ Windows: {{home_assistant.binary_sensor_windows.state}}
 | statestream_base_topic | string | No | MQTT topic prefix (default: homeassistant/statestream) |
 | statestream_broker_host | string | No | Override MQTT broker host (defaults to MQTT_BROKER_HOST) |
 | statestream_broker_port | integer | No | Override MQTT broker port (defaults to MQTT_BROKER_PORT) |
+| statestream_broker_username | string | No | Override MQTT broker username (defaults to MQTT_USERNAME) |
+| statestream_broker_password | string | No | Override MQTT broker password (defaults to MQTT_PASSWORD) |
 
 ### Entity Configuration
 
