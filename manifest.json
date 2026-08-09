@@ -142,12 +142,13 @@
       }
     },
     "dynamic_entities": {
-      "description": "Access any Home Assistant entity dynamically",
-      "access_pattern": "home_assistant.{entity_id}.state",
+      "description": "Access any Home Assistant entity dynamically. Replace the dot between the entity's domain and object_id with an underscore — the template engine splits expressions on '.', so 'home_assistant.sensor.temperature.state' resolves entity_id='sensor', attribute='temperature' and renders '???'.",
+      "access_pattern": "home_assistant.{domain}_{object_id}.{attribute}",
       "examples": [
-        "home_assistant.sensor.temperature.state",
-        "home_assistant.binary_sensor.door.state",
-        "home_assistant.light.kitchen.state"
+        "home_assistant.sensor_temperature.state",
+        "home_assistant.binary_sensor_door.state",
+        "home_assistant.light_kitchen.state",
+        "home_assistant.sensor_temperature.unit_of_measurement"
       ]
     }
   },

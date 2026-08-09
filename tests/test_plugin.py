@@ -914,6 +914,35 @@ class TestManifestMetadata:
         assert "access_pattern" in dyn
         assert "examples" in dyn and len(dyn["examples"]) > 0
 
+    def test_dynamic_entity_examples_use_underscore_entity_ids(self):
+        """Documented examples must use the syntax the engine actually resolves.
+
+        FiestaBoard's template engine splits ``{{...}}`` on ``.`` and treats the
+        segment right after ``home_assistant`` as the whole entity_id, mapping
+        underscores back to the domain/object_id boundary.  An example written
+        with the entity_id's natural dot (``home_assistant.sensor.temperature.state``)
+        makes the engine look up entity_id ``sensor`` with attribute
+        ``temperature``, which never matches and renders ``???`` (issue #80).
+        """
+        examples = self.manifest["variables"]["dynamic_entities"]["examples"]
+        for example in examples:
+            segments = example.split(".")
+            assert segments[0] == "home_assistant", (
+                f"Example '{example}' must start with the plugin id"
+            )
+            assert len(segments) == 3, (
+                f"Example '{example}' has {len(segments)} dot-separated segments; "
+                "the engine only reads home_assistant.<entity_id>.<attribute>, so "
+                "the entity_id must use underscores (e.g. sensor_temperature)"
+            )
+
+    def test_dynamic_entity_access_pattern_is_resolvable(self):
+        pattern = self.manifest["variables"]["dynamic_entities"]["access_pattern"]
+        assert pattern.count(".") == 2, (
+            f"access_pattern '{pattern}' must have exactly two dots: "
+            "home_assistant.<entity_id>.<attribute>"
+        )
+
     def test_no_top_level_max_lengths(self):
         assert "max_lengths" not in self.manifest, (
             "max_lengths must be embedded in variables.simple, not top-level"
