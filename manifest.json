@@ -26,7 +26,7 @@
       "access_token": {
         "type": "string",
         "title": "Long-Lived Access Token",
-        "description": "Create in HA: Profile \u2192 Long-Lived Access Tokens",
+        "description": "Create in HA: Profile → Long-Lived Access Tokens",
         "ui:widget": "password"
       },
       "entities": {
@@ -191,6 +191,28 @@
       "alt": "Home Assistant displayed on a Vestaboard",
       "caption": "Display entity states from Home Assistant via REST API or MQTT Statestream",
       "primary": true
+    }
+  ],
+  "teaser": "HA 12 ENTITIES",
+  "previews": [
+    {
+      "device_type": "flagship",
+      "rows": [
+        "{66}{66}{66}{66}{66}{66}{66}{66}{66}{66}{66}{66}{66}{66}{66}{66}{66}{66}{66}{66}{66}{66}",
+        "     SMART HOME",
+        "  LIVING ROOM  72F",
+        "  FRONT DOOR  LOCKED",
+        "  GARAGE DOOR  CLOSED",
+        "  ALARM ARMED 3 LIGHTS"
+      ]
+    },
+    {
+      "device_type": "note",
+      "rows": [
+        "{67}{67} HOME ASST",
+        "12 ENTITIES",
+        "ALL {66}ONLINE"
+      ]
     }
   ],
   "demo": {
