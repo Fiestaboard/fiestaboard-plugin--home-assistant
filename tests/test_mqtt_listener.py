@@ -3,12 +3,35 @@
 import pytest
 from unittest.mock import patch, Mock, MagicMock, call
 
-from plugins.home_assistant.mqtt_listener import HAStateStreamListener
+from plugins.home_assistant.mqtt_listener import HAStateStreamListener, _reason_code_value
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+class _FakeReasonCode:
+    """Stand-in for ``paho.mqtt.reasoncodes.ReasonCode`` (paho-mqtt 2.x).
+
+    The real class exposes ``.value`` but deliberately does **not** implement
+    ``__int__``, so ``int(reason_code)`` raises ``TypeError``.  Reproducing
+    that here is the whole point: the previous implementation called ``int()``
+    directly, the exception escaped ``_on_connect``, and paho's network thread
+    died before it could subscribe (issue #9).
+    """
+
+    def __init__(self, value: int, name: str = "Success"):
+        self.value = value
+        self._name = name
+
+    def __int__(self):
+        raise TypeError(
+            "int() argument must be a string, a bytes-like object or a real "
+            "number, not 'ReasonCode'"
+        )
+
+    def __str__(self):
+        return self._name
 
 def _base_config(**overrides):
     """Return a minimal statestream config."""
@@ -221,6 +244,35 @@ class TestOnConnect:
         assert listener.is_connected() is False
         mock_client.subscribe.assert_not_called()
 
+    def test_on_connect_accepts_paho2_reason_code(self):
+        """A paho-mqtt 2.x ReasonCode must not blow up the callback (#9).
+
+        ``CallbackAPIVersion.VERSION2`` — which ``start()`` requests — delivers
+        a ``ReasonCode`` object here.  It has no ``__int__``, so the old
+        ``int(reason_code)`` raised ``TypeError``; paho re-raises callback
+        exceptions by default, the network thread died, and the client never
+        subscribed.  The plugin then reported "Waiting" forever and no entity
+        ever populated.
+        """
+        listener = HAStateStreamListener(_base_config())
+        mock_client = MagicMock()
+
+        listener._on_connect(mock_client, None, None, _FakeReasonCode(0, "Success"))
+
+        assert listener.is_connected() is True
+        mock_client.subscribe.assert_called_once_with(
+            "homeassistant/statestream/+/+/+", qos=0
+        )
+
+    def test_on_connect_rejects_paho2_failure_reason_code(self):
+        listener = HAStateStreamListener(_base_config())
+        mock_client = MagicMock()
+
+        listener._on_connect(mock_client, None, None, _FakeReasonCode(135, "Not authorized"))
+
+        assert listener.is_connected() is False
+        mock_client.subscribe.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # on_disconnect callback
@@ -233,6 +285,34 @@ class TestOnDisconnect:
         listener._connected = True
         listener._on_disconnect(MagicMock(), None, None, 0)
         assert listener.is_connected() is False
+
+    def test_on_disconnect_accepts_paho2_reason_code(self):
+        listener = HAStateStreamListener(_base_config())
+        listener._connected = True
+        listener._on_disconnect(MagicMock(), None, None, _FakeReasonCode(142, "Session taken over"))
+        assert listener.is_connected() is False
+
+
+# ---------------------------------------------------------------------------
+# Reason-code normalisation
+# ---------------------------------------------------------------------------
+
+class TestReasonCodeValue:
+    """Tests for _reason_code_value() across paho generations."""
+
+    def test_none_is_success(self):
+        assert _reason_code_value(None) == 0
+
+    def test_paho1_int_passthrough(self):
+        assert _reason_code_value(0) == 0
+        assert _reason_code_value(5) == 5
+
+    def test_paho2_reason_code_reads_value(self):
+        assert _reason_code_value(_FakeReasonCode(0)) == 0
+        assert _reason_code_value(_FakeReasonCode(135)) == 135
+
+    def test_unrecognised_object_treated_as_success(self):
+        assert _reason_code_value(object()) == 0
 
 
 # ---------------------------------------------------------------------------
