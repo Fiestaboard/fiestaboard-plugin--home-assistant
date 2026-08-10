@@ -92,7 +92,8 @@ Any attribute works in place of `state`:
 ### Configured Entities
 
 Entities added under **Entities to Monitor** are used for the plugin's
-default board layout and for the `entity_count` variable. To reference one
+default board layout and for the `entity_count` variable. Pick each one from
+the searchable **Entity** dropdown rather than typing its id. To reference one
 in a template, use its entity_id with the underscore form above — the
 display name is not addressable from a template:
 
@@ -139,7 +140,7 @@ Windows: {{home_assistant.binary_sensor_windows.state}}
 | enabled | boolean | No | Enable/disable the plugin |
 | base_url | string | REST mode | HA URL (e.g., http://192.168.1.100:8123) |
 | access_token | string | REST mode | Long-lived access token |
-| entities | array | No | Specific entities to monitor |
+| entities | array | No | Specific entities to monitor; each entry is `{entity_id, name}` and `entity_id` is chosen from a searchable picker |
 | timeout | integer | No | Request timeout (default: 5) |
 | refresh_seconds | integer | No | Update interval (default: 30) |
 | mqtt_statestream | boolean | No | Enable MQTT Statestream mode (default: false) |
@@ -151,7 +152,19 @@ Windows: {{home_assistant.binary_sensor_windows.state}}
 
 ### Entity Configuration
 
-Configure specific entities with friendly names:
+Each row under **Entities to Monitor** pairs an entity with a short display
+name. The **Entity** field is a searchable picker: open it and the plugin
+lists every entity Home Assistant knows about, with its friendly name and
+current state, so there is no need to know the entity_id in advance. Typing
+filters the list on both the entity_id and the friendly name.
+
+The picker reads from the MQTT Statestream listener when it is connected and
+from the REST API otherwise. If neither is set up yet, the field explains what
+is missing instead of showing an empty list.
+
+The stored value is unchanged — an array of `{entity_id, name}` objects — so
+configurations written before the picker existed keep working, and an
+entity_id can still be typed or edited by hand:
 
 ```json
 {
