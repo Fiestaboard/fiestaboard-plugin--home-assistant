@@ -15,7 +15,14 @@ from typing import Any, Dict, List, Optional
 import logging
 import requests
 
-from src.plugins.base import PluginBase, PluginResult
+from src.plugins.base import (
+    Option,
+    OptionsRequest,
+    OptionsResult,
+    OptionsUnavailable,
+    PluginBase,
+    PluginResult,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -296,9 +303,112 @@ class HomeAssistantPlugin(PluginBase):
         return PluginResult(available=True, data=data)
 
     # ------------------------------------------------------------------
+    # Settings options (remote-options picker)
+    # ------------------------------------------------------------------
+
+    def get_options(self, request: OptionsRequest) -> OptionsResult:
+        """Browse the Home Assistant entity catalog for the settings picker.
+
+        Unlike ``fetch_data``, which reports on entities the user has already
+        chosen, this offers the *whole* catalog so they can choose a new one.
+
+        Raises:
+            OptionsUnavailable: Nothing is configured yet, or Home Assistant
+                could not be reached.
+            NotImplementedError: This plugin has no such provider.
+        """
+        if request.options_id != "entities":
+            raise NotImplementedError(request.options_id)
+
+        entities = self._catalog_for_options()
+
+        query = (request.query or "").strip().lower()
+        matched = [
+            entity_id
+            for entity_id in sorted(entities)
+            if self._entity_matches(entity_id, entities[entity_id], query)
+        ]
+
+        total = len(matched)
+        limit = request.limit if isinstance(request.limit, int) and request.limit > 0 else total
+        page = matched[:limit]
+
+        options = [self._entity_option(entity_id, entities[entity_id]) for entity_id in page]
+        return OptionsResult(options=options, has_more=total > len(page), total=total)
+
+    def _catalog_for_options(self) -> Dict[str, Dict]:
+        """Return the full entity catalog to browse, or explain why we can't.
+
+        Mirrors the source preference ``fetch_data`` uses: a connected
+        statestream listener already holds every entity in memory, so read it
+        instead of polling REST.  Unlike ``fetch_data`` this never *starts* a
+        listener — ``get_options`` runs on a throwaway instance and must not
+        open connections that outlive it.
+
+        Raises:
+            OptionsUnavailable: Nothing is configured to read a catalog from.
+                The settings dialog is open precisely *because* setup is
+                incomplete, so this is a hint, not a failure.
+        """
+        if self._mqtt_listener is not None and self._mqtt_listener.is_connected():
+            return self._mqtt_listener.get_entities()
+
+        if not self.config.get("base_url") or not self.config.get("access_token"):
+            if self.config.get("mqtt_statestream", False):
+                raise OptionsUnavailable(
+                    "Waiting for MQTT Statestream to connect. Add a Home Assistant URL "
+                    "and access token to browse entities in the meantime."
+                )
+            raise OptionsUnavailable(
+                "Add your Home Assistant URL and access token to browse entities, "
+                "or enable MQTT Statestream."
+            )
+
+        entities = self._fetch_all_entities()
+        if not entities:
+            # _fetch_all_entities logs and returns {} on any failure. A real
+            # Home Assistant always has entities, so an empty catalog here
+            # means we could not ask -- say so instead of rendering an empty
+            # picker that reads as "you have no entities".
+            raise OptionsUnavailable(
+                "Could not read entities from Home Assistant. Check the URL, token "
+                "and that Home Assistant is reachable."
+            )
+        return entities
+
+    @staticmethod
+    def _entity_matches(entity_id: str, entity: Dict[str, Any], query: str) -> bool:
+        """Whether an entity matches the user's search text.
+
+        Both the id and the friendly name are searched: people think in
+        "Front Door", but the id spells it ``binary_sensor.front_door``.
+        """
+        if not query:
+            return True
+        friendly_name = entity.get("friendly_name") or ""
+        return query in entity_id.lower() or query in str(friendly_name).lower()
+
+    @staticmethod
+    def _entity_option(entity_id: str, entity: Dict[str, Any]) -> Option:
+        """Map one catalog entry to a picker option.
+
+        Only entity_id, friendly_name and state travel to the browser — an
+        entity's full attribute bag times a few thousand entities is megabytes
+        of payload the picker has no use for.
+        """
+        friendly_name = entity.get("friendly_name") or entity_id
+        return Option(
+            value=entity_id,
+            label=entity_id,
+            # A friendly_name identical to the id is just noise under it.
+            description=friendly_name if friendly_name != entity_id else None,
+            preview=str(entity.get("state", ""))[:40],
+        )
+
+    # ------------------------------------------------------------------
     # Entity access
     # ------------------------------------------------------------------
-    
+
     def get_entity(self, entity_id: str) -> Optional[Dict]:
         """Get a specific entity's data (for dynamic template access)."""
         # Try MQTT listener first
