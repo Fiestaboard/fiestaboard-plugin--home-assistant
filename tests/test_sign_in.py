@@ -187,7 +187,8 @@ class TestRejectedSignIn:
         with patch.object(HomeAssistantPlugin, "report_oauth_rejected", create=True) as rep:
             result = _plugin(access_token="test_pasted").fetch_data()
         assert not result.available
-        assert "Failed to connect" in result.error
+        # Same message as before sign-in existed: no sign-in hint for pasted tokens.
+        assert result.error == "Failed to connect to Home Assistant"
         rep.assert_not_called()
 
     @patch("plugins.home_assistant.requests.get")
