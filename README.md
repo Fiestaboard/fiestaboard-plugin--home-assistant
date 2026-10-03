@@ -93,12 +93,17 @@ Any attribute works in place of `state`:
 
 Entities added under **Entities to Monitor** are used for the plugin's
 default board layout and for the `entity_count` variable. Pick each one from
-the searchable **Entity** dropdown rather than typing its id. To reference one
-in a template, use its entity_id with the underscore form above — the
-display name is not addressable from a template:
+the searchable **Entity** dropdown rather than typing its id.
+
+Each configured entity is also listed in the template editor's variable
+picker, as its entity_id with the dot replaced by an underscore. That variable
+holds the entity's state, so the picker inserts the shorter form; the
+`.state` form above works too. The display name is not addressable from a
+template:
 
 ```
 # entity_id sensor.temperature, display name "Temp"
+{{home_assistant.sensor_temperature}}
 {{home_assistant.sensor_temperature.state}}
 ```
 
