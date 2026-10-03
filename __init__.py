@@ -252,6 +252,8 @@ class HomeAssistantPlugin(PluginBase):
                         "state": all_entities[entity_id]["state"],
                         "friendly_name": all_entities[entity_id]["friendly_name"],
                     }
+                    # Flat scalar key so core's auto-discovery lists it in the picker
+                    data[entity_id.replace(".", "_")] = all_entities[entity_id]["state"]
             
             data["entities"] = configured_entities
             
@@ -297,6 +299,8 @@ class HomeAssistantPlugin(PluginBase):
                     "state": all_entities[entity_id].get("state", ""),
                     "friendly_name": all_entities[entity_id].get("friendly_name", entity_id),
                 }
+                # Flat scalar key so core's auto-discovery lists it in the picker
+                data[entity_id.replace(".", "_")] = all_entities[entity_id].get("state", "")
         data["entities"] = configured_entities
 
         self._cache = data
