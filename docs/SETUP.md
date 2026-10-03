@@ -13,12 +13,12 @@ The Home Assistant integration displays real-time status of your home's sensors 
 ## Prerequisites
 
 1. **Home Assistant server** running and accessible
-2. **Sign in with Home Assistant** (FiestaBoard 9.9.0+), or a **long-lived access token** from Home Assistant
+2. **Sign in with Home Assistant** (FiestaBoard 9.11.0+), or a **long-lived access token** from Home Assistant
 3. **Entity IDs** of the devices you want to monitor
 
 ## Step 1: Sign In or Get an Access Token
 
-### Option A: Sign in with Home Assistant (recommended, FiestaBoard 9.9.0+)
+### Option A: Sign in with Home Assistant (recommended, FiestaBoard 9.11.0+)
 
 1. In FiestaBoard, open **Integrations → Home Assistant**.
 2. Enter **Home Assistant URL** (for example `http://192.168.1.100:8123` or `http://homeassistant.local:8123`) and save.

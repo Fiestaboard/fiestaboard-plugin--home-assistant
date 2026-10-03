@@ -214,7 +214,7 @@
       ]
     }
   },
-  "fiestaboard_version": ">=9.9.0",
+  "fiestaboard_version": ">=9.11.0",
   "screenshots": [
     {
       "src": "docs/board-display.png",

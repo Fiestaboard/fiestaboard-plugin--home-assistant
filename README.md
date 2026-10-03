@@ -20,7 +20,7 @@ The Home Assistant plugin connects to your Home Assistant instance and allows yo
 ## Features
 
 - Connect to any Home Assistant instance
-- **Sign in with Home Assistant** (FiestaBoard 9.9.0+), or paste a long-lived access token
+- **Sign in with Home Assistant** (FiestaBoard 9.11.0+), or paste a long-lived access token
 - Display any entity state
 - Dynamic entity access in templates
 - Support for sensors, binary sensors, switches, and more
@@ -39,7 +39,7 @@ For detailed setup instructions including access token creation, see the **[Setu
 
 Or paste a long-lived access token into `access_token` instead of signing in. A pasted token always wins over the sign-in, so existing setups keep working unchanged.
 
-Sign-in uses Home Assistant's built-in login. It needs FiestaBoard 9.9.0 or later, and the address must be `https://`, or `http://` on your home network (a private IP, a `.local` name, or a single name such as `homeassistant`). The browser you sign in from must be able to open that address.
+Sign-in uses Home Assistant's built-in login. It needs FiestaBoard 9.11.0 or later, and the address must be `https://`, or `http://` on your home network (a private IP, a `.local` name, or a single name such as `homeassistant`). The browser you sign in from must be able to open that address.
 
 ### MQTT Statestream Mode
 

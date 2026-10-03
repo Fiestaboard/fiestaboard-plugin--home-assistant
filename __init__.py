@@ -57,7 +57,7 @@ class HomeAssistantPlugin(PluginBase):
         if not mqtt_enabled:
             if not config.get("base_url"):
                 errors.append("Home Assistant URL is required")
-            # With sign-in (FiestaBoard 9.9.0+) the user saves the URL first
+            # With sign-in (FiestaBoard 9.11.0+) the user saves the URL first
             # and signs in afterwards, so a pasted token is optional there.
             if not self._pasted_token(config) and not self._sign_in_supported():
                 errors.append("Access token is required")
@@ -148,7 +148,7 @@ class HomeAssistantPlugin(PluginBase):
         return response
 
     def _report_rejected(self) -> str:
-        """Tell core Home Assistant refused the sign-in (9.9.0+). Returns a new token or ""."""
+        """Tell core Home Assistant refused the sign-in (9.11.0+). Returns a new token or ""."""
         report = getattr(self, "report_oauth_rejected", None)
         if not callable(report):
             return ""

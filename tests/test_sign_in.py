@@ -1,4 +1,4 @@
-"""Sign in with Home Assistant (FiestaBoard 9.9.0 settings-based OAuth endpoints).
+"""Sign in with Home Assistant (FiestaBoard 9.11.0 settings-based OAuth endpoints).
 
 The pasted long-lived access token keeps working and wins when set. Sign-in is
 used only when no token is pasted. MQTT Statestream is untouched.
@@ -85,7 +85,7 @@ class TestManifestOAuthBlock:
             provider.resolve_endpoints({"base_url": base})
 
     def test_requires_core_with_settings_endpoints(self):
-        assert MANIFEST["fiestaboard_version"] == ">=9.9.0"
+        assert MANIFEST["fiestaboard_version"] == ">=9.11.0"
 
     def test_minor_version_bump(self):
         assert MANIFEST["version"] == "1.5.0"
