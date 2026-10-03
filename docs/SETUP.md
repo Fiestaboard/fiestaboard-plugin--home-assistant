@@ -13,10 +13,28 @@ The Home Assistant integration displays real-time status of your home's sensors 
 ## Prerequisites
 
 1. **Home Assistant server** running and accessible
-2. **Long-lived access token** from Home Assistant
+2. **Sign in with Home Assistant** (FiestaBoard 9.9.0+), or a **long-lived access token** from Home Assistant
 3. **Entity IDs** of the devices you want to monitor
 
-## Step 1: Get Home Assistant Access Token
+## Step 1: Sign In or Get an Access Token
+
+### Option A: Sign in with Home Assistant (recommended, FiestaBoard 9.9.0+)
+
+1. In FiestaBoard, open **Integrations → Home Assistant**.
+2. Enter **Home Assistant URL** (for example `http://192.168.1.100:8123` or `http://homeassistant.local:8123`) and save.
+3. Click **Sign in with Home Assistant**. Your Home Assistant login page opens.
+4. Log in and approve FiestaBoard. You are sent back to the board, which shows **Connected**.
+
+Leave **Long-Lived Access Token** empty. If it has a value, the board uses that token instead of the sign-in.
+
+Notes:
+- The address must be `https://`, or `http://` on your home network: a private IP, `localhost`, a single name such as `homeassistant`, or a name ending in `.local`, `.lan`, `.home.arpa` or `.internal`. Anything else stops the sign-in with a message asking you to check the address.
+- The browser you sign in from must be able to open that address, so sign in from a device on your home network (or use your `https://` remote address).
+- There is no client ID or secret to set up. Home Assistant identifies FiestaBoard as `https://fiestaboard.app/`.
+- To revoke it, open your Home Assistant profile, go to **Security → Refresh tokens**, and delete the FiestaBoard entry. The board then shows "Reconnect needed".
+
+### Option B: Long-lived access token
+
 
 1. **Log into Home Assistant** web interface
 2. Go to your **profile** (click your username in the bottom left)
@@ -175,7 +193,7 @@ You can select which page is active from the Pages UI.
    curl http://192.168.1.100:8123/api/
    ```
 
-2. **Verify access token:**
+2. **Verify access token** (or, if you signed in and the settings show "Reconnect needed", click **Sign in with Home Assistant** again):
    - Make sure token is correct
    - Check token hasn't expired
    - Verify token has proper permissions

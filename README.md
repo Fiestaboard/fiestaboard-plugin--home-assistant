@@ -4,7 +4,7 @@
 
 Display entity states from your Home Assistant instance.
 
-**→ [Setup Guide](./docs/SETUP.md)** - Access token setup and configuration
+**→ [Setup Guide](./docs/SETUP.md)** - Sign in with Home Assistant, access token setup and configuration
 
 ## Overview
 
@@ -14,12 +14,13 @@ The Home Assistant plugin connects to your Home Assistant instance and allows yo
 
 | Mode | How it works | Latency | Requires |
 |------|-------------|---------|----------|
-| **REST polling** (default) | Periodically calls HA REST API | 10–30 s | HA URL + access token |
+| **REST polling** (default) | Periodically calls HA REST API | 10–30 s | HA URL + sign-in or access token |
 | **MQTT Statestream** | Subscribes to real-time MQTT state changes | Near-instant | MQTT broker + HA Statestream integration |
 
 ## Features
 
 - Connect to any Home Assistant instance
+- **Sign in with Home Assistant** (FiestaBoard 9.9.0+), or paste a long-lived access token
 - Display any entity state
 - Dynamic entity access in templates
 - Support for sensors, binary sensors, switches, and more
@@ -33,7 +34,12 @@ For detailed setup instructions including access token creation, see the **[Setu
 
 ### REST Mode (default)
 
-Set `base_url` and `access_token` in the plugin configuration.
+1. Set `base_url` to your Home Assistant address and save.
+2. Click **Sign in with Home Assistant** and approve FiestaBoard in Home Assistant.
+
+Or paste a long-lived access token into `access_token` instead of signing in. A pasted token always wins over the sign-in, so existing setups keep working unchanged.
+
+Sign-in uses Home Assistant's built-in login. It needs FiestaBoard 9.9.0 or later, and the address must be `https://`, or `http://` on your home network (a private IP, a `.local` name, or a single name such as `homeassistant`). The browser you sign in from must be able to open that address.
 
 ### MQTT Statestream Mode
 
@@ -144,7 +150,7 @@ Windows: {{home_assistant.binary_sensor_windows.state}}
 |---------|------|----------|-------------|
 | enabled | boolean | No | Enable/disable the plugin |
 | base_url | string | REST mode | HA URL (e.g., http://192.168.1.100:8123) |
-| access_token | string | REST mode | Long-lived access token |
+| access_token | string | REST mode, unless signed in | Long-lived access token. Optional when you sign in with Home Assistant; used instead of the sign-in when set |
 | entities | array | No | Specific entities to monitor; each entry is `{entity_id, name}` and `entity_id` is chosen from a searchable picker |
 | timeout | integer | No | Request timeout (default: 5) |
 | refresh_seconds | integer | No | Update interval (default: 30) |
@@ -207,6 +213,7 @@ You can apply colors based on entity states:
 ## Security Notes
 
 - Access token should be kept secure
+- Sign-in tokens stay on the board, last 30 minutes and are refreshed automatically. Remove FiestaBoard under your Home Assistant profile (Refresh tokens) to revoke it
 - Use HTTPS when possible for external access
 - Token has full API access - treat it like a password
 - MQTT broker credentials are resolved from env vars; avoid storing them in plugin config when possible
@@ -218,7 +225,7 @@ You can apply colors based on entity states:
 1. Verify Home Assistant URL is correct
 2. Check network connectivity
 3. Ensure port is open (usually 8123)
-4. Verify access token is valid
+4. Verify access token is valid, or sign in with Home Assistant again if the settings show "Reconnect needed"
 
 ### Entity Not Found
 
