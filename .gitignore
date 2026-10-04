@@ -25,3 +25,7 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local CI symlink scaffold (recreated by ci.yml and by run_tests.sh)
+/plugins/
+/home_assistant

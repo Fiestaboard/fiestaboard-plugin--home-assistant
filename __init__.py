@@ -40,6 +40,10 @@ class HomeAssistantPlugin(PluginBase):
         self._cache: Optional[Dict[str, Any]] = None
         self._all_entities: Optional[Dict[str, Dict]] = None
         self._mqtt_listener: Optional["HAStateStreamListener"] = None
+        # The token used for the current fetch, and whether it came from
+        # "Sign in with Home Assistant" rather than a pasted token.
+        self._token: str = ""
+        self._token_from_sign_in: bool = False
     
     @property
     def plugin_id(self) -> str:
@@ -53,7 +57,9 @@ class HomeAssistantPlugin(PluginBase):
         if not mqtt_enabled:
             if not config.get("base_url"):
                 errors.append("Home Assistant URL is required")
-            if not config.get("access_token"):
+            # With sign-in (FiestaBoard 9.11.0+) the user saves the URL first
+            # and signs in afterwards, so a pasted token is optional there.
+            if not self._pasted_token(config) and not self._sign_in_supported():
                 errors.append("Access token is required")
         
         return errors
@@ -91,12 +97,75 @@ class HomeAssistantPlugin(PluginBase):
             self._mqtt_listener = None
 
     # ------------------------------------------------------------------
-    # REST helpers (unchanged)
+    # Credentials: pasted long-lived token, else Sign in with Home Assistant
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _pasted_token(config: Dict[str, Any]) -> str:
+        token = config.get("access_token")
+        return token.strip() if isinstance(token, str) else ""
+
+    def _sign_in_supported(self) -> bool:
+        """Whether this FiestaBoard core offers plugin sign-in (9.5.0+)."""
+        return callable(getattr(self, "get_oauth_token", None))
+
+    def _sign_in_token(self) -> str:
+        """The token from Sign in with Home Assistant, or "" when signed out."""
+        getter = getattr(self, "get_oauth_token", None)
+        if not callable(getter):
+            return ""
+        try:
+            token = getter()
+        except Exception as e:  # never let the platform break a fetch
+            logger.debug(f"Home Assistant sign-in token unavailable: {e}")
+            return ""
+        return token.strip() if isinstance(token, str) else ""
+
+    def _resolve_token(self) -> str:
+        """Pick the token for this fetch. A pasted token always wins."""
+        pasted = self._pasted_token(self.config)
+        if pasted:
+            self._token, self._token_from_sign_in = pasted, False
+        else:
+            self._token = self._sign_in_token()
+            self._token_from_sign_in = bool(self._token)
+        return self._token
+
+    def _has_rest_credentials(self) -> bool:
+        return bool(self.config.get("base_url")) and bool(self._resolve_token())
+
+    def _api_get(self, path: str) -> requests.Response:
+        """GET ``/api{path}``; on a 401 to a signed-in token, ask core once for a new one."""
+        timeout = self.config.get("timeout", 5)
+        url = f"{self._get_api_url()}{path}"
+        self._resolve_token()  # fresh each call: core refreshes signed-in tokens
+        response = requests.get(url, headers=self._get_headers(), timeout=timeout)
+        if getattr(response, "status_code", None) == 401 and self._token_from_sign_in:
+            new_token = self._report_rejected()
+            if new_token:
+                self._token = new_token
+                response = requests.get(url, headers=self._get_headers(), timeout=timeout)
+        return response
+
+    def _report_rejected(self) -> str:
+        """Tell core Home Assistant refused the sign-in (9.11.0+). Returns a new token or ""."""
+        report = getattr(self, "report_oauth_rejected", None)
+        if not callable(report):
+            return ""
+        try:
+            token = report()
+        except Exception as e:
+            logger.debug(f"Could not report rejected Home Assistant sign-in: {e}")
+            return ""
+        return token.strip() if isinstance(token, str) else ""
+
+    # ------------------------------------------------------------------
+    # REST helpers
     # ------------------------------------------------------------------
 
     def _get_headers(self) -> Dict[str, str]:
         """Get API request headers."""
-        token = self.config.get("access_token", "")
+        token = self._token or self._resolve_token()
         return {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"
@@ -110,12 +179,7 @@ class HomeAssistantPlugin(PluginBase):
     def test_connection(self) -> bool:
         """Test connection to Home Assistant."""
         try:
-            timeout = self.config.get("timeout", 5)
-            response = requests.get(
-                f"{self._get_api_url()}/",
-                headers=self._get_headers(),
-                timeout=timeout
-            )
+            response = self._api_get("/")
             response.raise_for_status()
             return True
         except Exception as e:
@@ -125,12 +189,7 @@ class HomeAssistantPlugin(PluginBase):
     def _get_entity_state(self, entity_id: str) -> Optional[Dict]:
         """Get state of a single entity."""
         try:
-            timeout = self.config.get("timeout", 5)
-            response = requests.get(
-                f"{self._get_api_url()}/states/{entity_id}",
-                headers=self._get_headers(),
-                timeout=timeout
-            )
+            response = self._api_get(f"/states/{entity_id}")
             response.raise_for_status()
             return response.json()
         except Exception as e:
@@ -140,12 +199,7 @@ class HomeAssistantPlugin(PluginBase):
     def _fetch_all_entities(self) -> Dict[str, Dict]:
         """Fetch all entity states for template context."""
         try:
-            timeout = self.config.get("timeout", 5)
-            response = requests.get(
-                f"{self._get_api_url()}/states",
-                headers=self._get_headers(),
-                timeout=timeout
-            )
+            response = self._api_get("/states")
             response.raise_for_status()
             entities = response.json()
             
@@ -186,7 +240,7 @@ class HomeAssistantPlugin(PluginBase):
 
             # Not connected yet — fall back to REST if credentials are present
             logger.debug("Statestream not connected; falling back to REST")
-            if not self.config.get("base_url") or not self.config.get("access_token"):
+            if not self._has_rest_credentials():
                 # No REST credentials to fall back on — report the MQTT state
                 return PluginResult(
                     available=True,
@@ -199,17 +253,25 @@ class HomeAssistantPlugin(PluginBase):
                 )
 
         # --- REST polling path ---
-        base_url = self.config.get("base_url")
-        access_token = self.config.get("access_token")
-        
-        if not base_url or not access_token:
+        if not self._has_rest_credentials():
             return PluginResult(
                 available=False,
-                error="Home Assistant not configured"
+                error=(
+                    "Home Assistant not configured: add its URL, then sign in with "
+                    "Home Assistant or paste a long-lived access token"
+                ),
             )
         
         # Test connection
         if not self.test_connection():
+            if self._token_from_sign_in:
+                return PluginResult(
+                    available=False,
+                    error=(
+                        "Failed to connect to Home Assistant. If it is reachable, "
+                        "sign in with Home Assistant again in the plugin settings"
+                    ),
+                )
             return PluginResult(
                 available=False,
                 error="Failed to connect to Home Assistant"
@@ -357,15 +419,15 @@ class HomeAssistantPlugin(PluginBase):
         if self._mqtt_listener is not None and self._mqtt_listener.is_connected():
             return self._mqtt_listener.get_entities()
 
-        if not self.config.get("base_url") or not self.config.get("access_token"):
+        if not self._has_rest_credentials():
             if self.config.get("mqtt_statestream", False):
                 raise OptionsUnavailable(
                     "Waiting for MQTT Statestream to connect. Add a Home Assistant URL "
-                    "and access token to browse entities in the meantime."
+                    "and sign in (or paste an access token) to browse entities in the meantime."
                 )
             raise OptionsUnavailable(
-                "Add your Home Assistant URL and access token to browse entities, "
-                "or enable MQTT Statestream."
+                "Add your Home Assistant URL, then sign in with Home Assistant or paste "
+                "an access token to browse entities, or enable MQTT Statestream."
             )
 
         entities = self._fetch_all_entities()

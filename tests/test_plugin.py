@@ -63,12 +63,14 @@ class TestHomeAssistantValidateConfig:
         errors = plugin.validate_config({"access_token": "token"})
         assert "Home Assistant URL is required" in errors
 
+    @pytest.mark.usefixtures("old_core")
     def test_validate_config_missing_access_token(self):
         """Test validation fails when access_token is missing."""
         plugin = HomeAssistantPlugin(_ha_manifest())
         errors = plugin.validate_config({"base_url": "http://ha.local"})
         assert "Access token is required" in errors
 
+    @pytest.mark.usefixtures("old_core")
     def test_validate_config_both_missing(self):
         """Test validation returns both errors when both are missing."""
         plugin = HomeAssistantPlugin(_ha_manifest())
@@ -88,6 +90,7 @@ class TestHomeAssistantValidateConfig:
         errors = plugin.validate_config({"base_url": "", "access_token": "token"})
         assert "Home Assistant URL is required" in errors
 
+    @pytest.mark.usefixtures("old_core")
     def test_validate_config_empty_access_token(self):
         """Test validation fails when access_token is empty string."""
         plugin = HomeAssistantPlugin(_ha_manifest())
@@ -689,6 +692,7 @@ class TestHomeAssistantMQTTMode:
         errors = plugin.validate_config({"mqtt_statestream": True})
         assert len(errors) == 0
 
+    @pytest.mark.usefixtures("old_core")
     def test_validate_config_rest_mode_requires_creds(self):
         """When mqtt_statestream is off, base_url and access_token are required."""
         plugin = HomeAssistantPlugin(_ha_manifest())
